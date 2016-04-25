@@ -123,10 +123,11 @@ public class LevelScriptEditor : Editor
 				i++;
 			}
 			myTarget._generalIndex = EditorGUILayout.Popup("Method to control", myTarget._generalIndex, _propertyChoice);
-			myTarget.methodObject = methods[myTarget._generalIndex];
-			addressName = "/"+myTarget.transform.name;
-			myTarget._extra = EditorGUILayout.IntField("Blendshape Index",myTarget._extra);
-
+			if (methods.Length > myTarget._generalIndex) {
+				myTarget.methodObject = methods [myTarget._generalIndex];
+				addressName = "/" + myTarget.transform.name;
+				myTarget._extra = EditorGUILayout.IntField ("Blendshape Index", myTarget._extra);
+			}
 		} else if(myTarget._controlIndex == 2)
 		{
 			// --------------------------------------------------------- [ FIELDS ]
@@ -292,7 +293,8 @@ public class LevelScriptEditor : Editor
 		} else if (myTarget._controlIndex == 1) {
 			#if UNITY_EDITOR
 
-			if(myTarget.methodObject.Name == "SetBlendShapeWeight") myTarget.enableMapping = EditorGUILayout.Toggle ("Enable Mapping", myTarget.enableMapping);
+			if(myTarget.methodObject!= null) if(myTarget.methodObject.Name == "SetBlendShapeWeight") myTarget.enableMapping = EditorGUILayout.Toggle ("Enable Mapping", myTarget.enableMapping);
+
 			if (myTarget.enableMapping) 
 			{
 				bool initList = false;
@@ -308,7 +310,7 @@ public class LevelScriptEditor : Editor
 
 
 
-					if(myTarget.methodObject.Name == "SetBlendShapeWeight")
+				if(myTarget.methodObject!= null) if(myTarget.methodObject.Name == "SetBlendShapeWeight")
 					{
 						GameObject objectTemp = myTarget.gameObject;
 						SkinnedMeshRenderer meshTemp = objectTemp.GetComponent<SkinnedMeshRenderer>();
