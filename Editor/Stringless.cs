@@ -4,6 +4,8 @@
 //	Stringless OSC Window Tracer
 //	Version 1.0 Beta
 //
+//	Updated for Unity 5 (need to optimize the get componnent issue
+//
 //	This code was adapted from UnityOSC from Jorge Garcia
 //	
 //	Copyright (c) 2015-2016 Luis Leite (Grifu)
@@ -34,8 +36,14 @@ public class Stringless : EditorWindow
 	private int inSelected = -1;
 	private int outSelected = -1;
 	public OSC[] instancesOSC;
+
+	//TODO: remove this dictionary
 	private Dictionary<int, OSC> _clientOSC = new Dictionary<int, OSC>();
 	private Dictionary<int, OSC> _serverOSC = new Dictionary<int, OSC>();
+
+	//TODO: This new dictionaty is compatible with Unity5, instead of pairing with OSC lets save the gameobject
+	private Dictionary<int, GameObject> _clientOSCg = new Dictionary<int, GameObject>();
+	private Dictionary<int, GameObject> _serverOSCg = new Dictionary<int, GameObject>();
 
 	#endregion
 
@@ -64,6 +72,8 @@ public class Stringless : EditorWindow
 			{
 				if(!_clientOSC.ContainsKey(item.getPortIN())) _clientOSC.Add(item.getPortIN(), item.gameObject.GetComponent<OSC>());
 				if(!_serverOSC.ContainsKey(item.getPortOUT())) _serverOSC.Add(item.getPortOUT(), item.gameObject.GetComponent<OSC>());
+				if(!_clientOSCg.ContainsKey(item.getPortIN())) _clientOSCg.Add(item.getPortIN(), item.gameObject);
+				if(!_serverOSCg.ContainsKey(item.getPortOUT())) _serverOSCg.Add(item.getPortOUT(), item.gameObject);
 			}
 			_output.Clear();
 		}
@@ -100,9 +110,10 @@ public class Stringless : EditorWindow
 			{
 				foreach(KeyValuePair<int, OSC> pair in _clientOSC)
 				{
-					GameObject objOSC = _clientOSC[pair.Key].gameObject;
-					objOSC.GetComponent<OSC> ().SetAllMessageHandler(null);
-
+					if (_clientOSC [pair.Key] != null) {
+						GameObject objOSC = _clientOSC [pair.Key].gameObject;
+						objOSC.GetComponent<OSC> ().SetAllMessageHandler (null);
+					}
 				}
 				change = false;
 			}
@@ -148,17 +159,19 @@ public class Stringless : EditorWindow
 	{
 		if(EditorApplication.isPlaying)
 		{
-
+			//Debug.Log ("client = " + _clientOSC.Count + " itenm= "+_clientOSC[inSelected].);
 			if((inSelected > 0) && (_clientOSC.ContainsKey(inSelected)))
 			{
 
 				if (instancesOSC.Length > 0)
 				{
-					if(_clientOSC[inSelected].getPortIN() == inSelected)
-					{
-						GameObject objOSC = _clientOSC[inSelected].gameObject;
-						objOSC.GetComponent<OSC> ().SetAllMessageHandler(OnReceive);
-					}
+					
+						if (_clientOSC [inSelected].getPortIN () == inSelected) {
+
+				//			_clientOSC [inSelected].SetAllMessageHandler (OnReceive);
+							GameObject objOSC = _clientOSCg [inSelected];
+							objOSC.GetComponent<OSC> ().SetAllMessageHandler (OnReceive);
+						}
 				}
 
 			}
@@ -169,8 +182,8 @@ public class Stringless : EditorWindow
 				{
 					if(_serverOSC[outSelected].getPortOUT() == outSelected)
 					{
-
-						GameObject objOSC = _serverOSC[outSelected].gameObject;
+					//	_serverOSC[outSelected].setSendMessage(OnReceive);
+						GameObject objOSC = _serverOSCg[outSelected];
 						objOSC.GetComponent<OSC> ().setSendMessage(OnReceive);
 						//_clientOSC[inSelected].SetAllMessageHandler(OnReceive);
 					}
@@ -219,7 +232,6 @@ public class Stringless : EditorWindow
 	/// </returns>
 	private void OnReceive(OscMessage packet)
 	{
-
 		if(_output.Count < 25)
 		{
 			_output.Add(String.Concat(DateTime.UtcNow.ToString(),".",
