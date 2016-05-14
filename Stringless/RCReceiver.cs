@@ -24,11 +24,13 @@
 // 	IN THE SOFTWARE.
 //
 
+
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System;
+using UnityEditor;
 
 public struct ObjectRequirements
 {
@@ -58,6 +60,8 @@ public class RCReceiver : MonoBehaviour {
 	public int _portIndex = 0;			// network port
 	public int _controlIndex = 0;
 	public int _extra = 0;
+	private List<string> oscAddress = new List<string>();
+	public int _addressIndex = 0;
 	[SerializeField]
 	public PropertyInfo propertyObject;
 	public PropertyInfo minMapping, maxMapping;
@@ -66,12 +70,12 @@ public class RCReceiver : MonoBehaviour {
 	public bool learnOut = false;
 	[SerializeField]
 	public MethodInfo methodObject;
+	public FieldInfo fieldObject;
 	public string address;
 	public bool relativeAt = false;
 	public OSC RCPortInPort;
 	private ObjectRequirements requirements;	// requirments arguments (number and type)
 	private object relativeValue;				// keep the original value for relative option
-
 	private SkinnedMeshRenderer meshTemp;		// mesh for blendshapes
 	//private bool oscEnable = true;
 
@@ -108,6 +112,9 @@ public class RCReceiver : MonoBehaviour {
 	void Start () 
 	{
 
+		oscAddress.Clear ();		// cleaning the address list
+
+
 		OSC[] instancesOSC;
 		instancesOSC = FindObjectsOfType (typeof(OSC)) as OSC[];
 		GameObject oscGameobject;
@@ -122,6 +129,7 @@ public class RCReceiver : MonoBehaviour {
 				}
 				oscReference = oscGameobject.GetComponent<OSC> ();
 				oscReference.SetAddressHandler( address , OnReceive );
+				oscReference.SetAllMessageHandler(OnReceiveAll);
 			}
 
 		}else 
@@ -209,6 +217,83 @@ public class RCReceiver : MonoBehaviour {
 
 
 	/// <summary>
+	/// deactivate all the RCReceiver behaviors attacthed to this object
+	/// this is important to be able to control objects with same addresses and to switch their controls
+	/// imagine that we have three lights with the same osc_address maped to a iphone osc fader
+	/// we can create a switch object in pd or maxmsp that switch control between them each time that we press a specific button
+	/// the button will send a activate and deactivate messages to the target behaviors with activate method
+	/// </summary>
+	/// <param name="value1">
+	/// A <see cref="bool"/>
+	/// </param>
+	/// 
+	public void deActivate(bool value1)
+	{
+		Component[] oscComponents;
+		oscComponents = this.GetComponents<RCReceiver> ();
+		bool processActivate = true;
+		
+		// check how many behaviors are attatched to this object
+		foreach(RCReceiver item in oscComponents)
+		{
+			
+			if(item.methodObject != null) 
+				if(item.methodObject.Name == "Activate") // we will not touch in the Activate control behavior
+					processActivate = false;
+			else
+				processActivate = true;
+			else
+				processActivate = true;
+			// change everything but the activate behavior
+			if(processActivate)	item.enabled = !value1;
+			
+			
+		}
+		
+		//oscEnable = value1;
+	}
+
+	/// <summary>
+	/// Camera Switch
+	/// </summary>
+	/// <param name="value1">
+	/// A <see cref="bool"/>
+	/// </param>
+	/// 
+	public void cameraActivate(bool value1)
+	{
+		Camera validCamera;
+		validCamera = this.GetComponent<Camera> ();
+		if (validCamera != null)
+		{
+			validCamera.enabled = value1;
+		}
+	}
+
+	void updateEditorAddress(string messageReceived)
+	{
+
+		string messageAddress = messageReceived.Replace("/","\\");			// change the slash
+		EditorPrefs.SetString("address"+oscAddress.Count.ToString(),messageAddress);
+		oscAddress.Add (messageReceived);		// this might be moved
+		
+		EditorPrefs.SetInt("Addresses",oscAddress.Count);		// lets save the address
+	}
+
+
+
+	// TODO: SHOULD be optimized 
+	void OnReceiveAll(OscMessage packet)
+	{
+		// just to help gathering a list of addresses to faciliate the selection
+
+		if (!oscAddress.Contains (packet.address))
+						updateEditorAddress (packet.address);
+
+	
+	}
+
+	/// <summary>
 	/// Listener for incoming messages provided by OSC
 	/// </summary>
 	/// <param name="packet">
@@ -232,6 +317,22 @@ public class RCReceiver : MonoBehaviour {
 			object[] typeObject = new object[requirements.requiredArgumentsAmount]; // the size of the required arguments
 
 
+			// NUMBER OF ARGUMENTS IS LESS THEN REQUIRED
+			// If there are no sufficient arguments as required lets fill the vector with 0's
+				// TODO change 0's to the current value
+			if(numberArguments < requirements.requiredArgumentsAmount)
+			{
+
+				for (int x = 0; x< (requirements.requiredArgumentsAmount); x++) 
+				{
+					
+					if (packet.values[0].GetType() == typeof(Single))
+						typeObject[x] = 0F; // Put 0's if the value is a float
+					else 
+						typeObject[x] = packet.GetInt(0); // if we do not know the type, lets assign the first value to it (TODO: solve it)
+				}
+			} 
+
 		
 			// Only if we have more then one message and if the required messages are more then 1
 			if(requirements.requiredArgumentsAmount > 1 && packet.values.Count > 1)
@@ -240,23 +341,26 @@ public class RCReceiver : MonoBehaviour {
 					{
 						typeObject[i] = packet.GetFloat(i);
 					}
-			}
 
-		// NUMBER OF ARGUMENTS IS LESS THEN REQUIRED
-		// If there are no sufficient arguments as required lets fill the vector with 0's
-		if(numberArguments < requirements.requiredArgumentsAmount)
-		{
-			for (int x = numberArguments; x< (requirements.requiredArgumentsAmount); x++) 
+			} else
 			{
+					// only one parameter arriving, lets chooose from the mapping
 
-				if (packet.values[0].GetType() == typeof(Single))
-					typeObject[x] = 0F; // Put 0's if the value is a float
-					 else 
-					typeObject[x] = packet.GetInt(0); // if we do not know the type, lets assign the first value to it (TODO: solve it)
-
+					if(enableMapping)
+					{
+						int valueAssign = 0;
+						for(int i=0; i < requirements.requiredArgumentsAmount; i++)
+						{
+							if(maxRange[i] != 0 || minRange[i] != 0) valueAssign = i;
+						}
+						typeObject[valueAssign] = packet.GetFloat(0);
+					} else
+					{
+						typeObject[0] = packet.GetFloat(0);
+					}
 			}
-			
-		} 
+
+
 
 		object tempVar;
 		tempVar = null;
@@ -413,8 +517,8 @@ public class RCReceiver : MonoBehaviour {
 				}
 			}
 			
-		}
 
+		}
 
 		}
 
@@ -431,8 +535,7 @@ public class RCReceiver : MonoBehaviour {
 	/// Updates the processing
 	/// </summary>
 	void Update () {
-
-
+		//if(oscAddress.Count == 0) updateEditorAddress (address);
 		if (RCPortInPort != null) {
 			// verify if its enable
 
