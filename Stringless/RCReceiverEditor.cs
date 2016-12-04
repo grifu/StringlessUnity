@@ -2,7 +2,7 @@
 //  ------------------------------------
 //
 // 	Allows the user to map the receving OSC message to any component
-//  Version 2.0 Beta
+//  Version 2.1 Beta
 //
 //  Remote Control for Unity - part of Digital Puppet Tools, A digital ecosystem for Virtual Marionette Project
 //
@@ -175,7 +175,15 @@ public class LevelScriptEditor : Editor
 			addrOSC[0] = myTarget.address.Replace("/","\\");	
 			for(int a=0;a<addresses; a++)
 			{
+								/* Future implementation of TUIO
+								string tempAddress = EditorPrefs.GetString ("address" + a.ToString ());
+								if (tempAddress == "/tuio/2Dcur")
+								*/
+										
 				addrOSC[a+1] = (EditorPrefs.GetString("address"+a.ToString()));
+
+
+
 			}
 			int indexAddress = myTarget._addressIndex;
 			myTarget._addressIndex = EditorGUILayout.Popup("Last addresses",myTarget._addressIndex, addrOSC);

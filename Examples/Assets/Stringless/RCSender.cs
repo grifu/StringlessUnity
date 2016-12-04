@@ -2,7 +2,7 @@
 //  ------------------------------------
 //
 // 	Outputs OSC packadges from selected parameters of the Gameobject to the network (expose parameters)
-//  Version 2.0 Beta
+//  Version 2.1 Beta
 //
 //  Remote Control for Unity - part of Digital Puppet Tools, A digital ecosystem for Virtual Marionette Project
 //
@@ -53,6 +53,7 @@ public class RCSender : MonoBehaviour {
 	[SerializeField]
 	public PropertyInfo propertyObject;
 	public MethodInfo methodObject;
+	public FieldInfo fieldObject;
 	public string address;
 	public OSC OSCtransmitPort;
 	public bool sendEveryFrame = false;
@@ -60,8 +61,6 @@ public class RCSender : MonoBehaviour {
 	private object relativeValue;				// keep the original value for relative option
 	private float blendShapeTemp = 0;
 	private object oldPropertyObject;
-
-
 
 	/// <summary>
 	///  Check required arguments for a given property
@@ -114,6 +113,15 @@ public class RCSender : MonoBehaviour {
 				BindingFlags.Instance | BindingFlags.Static;
 			MethodInfo[] methods = typeComponent.GetMethods(flags);	
 			if(methods.Length > _generalIndex) methodObject = methods[_generalIndex];
+		}
+
+		if (fieldObject == null)
+		{
+			Type typeComponent = objectComponent.GetType();
+			const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.DeclaredOnly  | BindingFlags.Public | 
+				BindingFlags.Instance | BindingFlags.Static;
+			FieldInfo[] fields = typeComponent.GetFields (flags);	
+			if(fields.Length > _generalIndex) fieldObject = fields[_generalIndex];
 		}
 
 		OSC[] instancesOSC;
@@ -179,33 +187,61 @@ public class RCSender : MonoBehaviour {
 
 		} else if(_controlIndex == 1)	// method sending not include yet
 		{
-			if(methodObject != null)
-			{
-				// for now its just for blendhshapes
-				// TODO: create a generic method for sending all the data that derives from methodObject
-				if(methodObject.Name == "GetBlendShapeWeight")
+						if (methodObject != null) {
+								// for now its just for blendhshapes
+								// TODO: create a generic method for sending all the data that derives from methodObject
+								if (methodObject.Name == "GetBlendShapeWeight") {
+										GameObject objectTemp = this.gameObject;
+										SkinnedMeshRenderer meshTemp = objectTemp.GetComponent<SkinnedMeshRenderer> ();
+
+										ArrayList objectList = new ArrayList ();
+										objectList.Add (meshTemp.GetBlendShapeWeight (_extra));
+
+										if (blendShapeTemp != meshTemp.GetBlendShapeWeight (_extra)) {
+
+												OscMessage messageOSC = new OscMessage ();
+												messageOSC.address = address;
+												messageOSC.values = objectList;
+												oscReference.Send (messageOSC);
+												blendShapeTemp = meshTemp.GetBlendShapeWeight (_extra);
+
+										}
+
+								} else {
+										/* Future Implementation
+										ParameterInfo[] parameters = methodObject.GetParameters ();
+										*/
+								}
+						}
+			}else if(_controlIndex == 2)	// fields sending not include yet
 				{
-					GameObject objectTemp = this.gameObject;
-					SkinnedMeshRenderer meshTemp = objectTemp.GetComponent<SkinnedMeshRenderer>();
-
-					ArrayList objectList = new ArrayList();
-					objectList.Add(meshTemp.GetBlendShapeWeight(_extra));
-
-					if(blendShapeTemp != meshTemp.GetBlendShapeWeight(_extra))
+			
+					if (fieldObject != null) 
 					{
+								
 
-						OscMessage messageOSC = new OscMessage();
-						messageOSC.address = address;
-						messageOSC.values = objectList;
-						oscReference.Send(messageOSC);
-						blendShapeTemp = meshTemp.GetBlendShapeWeight(_extra);
+								// check if we have different incoming values to send or if we want to send every frames
+								if (fieldObject.GetValue (objectComponent).Equals (oldPropertyObject) && !sendEveryFrame) {
+								} else {
+										oldPropertyObject = fieldObject.GetValue(objectComponent);
+
+										ArrayList objectList = new ArrayList();
+										objectList = listConvertedField(fieldObject);
+
+										if ((objectList != null) && (oscReference != null)) {
+
+												OscMessage messageOSC = new OscMessage ();
+												messageOSC.address = address;
+												messageOSC.values = objectList;
+												oscReference.Send (messageOSC);
+										}
+
+
+								}
 
 					}
 
-				}
-
-			}
-		}
+				}				
 	}
 
 
@@ -231,28 +267,30 @@ public class RCSender : MonoBehaviour {
 		ArrayList objectValuesToSend = new ArrayList(); 
 		if(propObject.GetValue(objectComponent,null) != null) 
 		{
+			Type objectType;
+			objectType = propObject.GetValue (objectComponent, null).GetType ();
 
-			if(propObject.GetValue(objectComponent,null).GetType() == typeof(Vector2))
+			if(objectType == typeof(Vector2))
 			{
 				for(int x=0;x<2;x++)
 					objectValuesToSend.Add(((Vector2)propObject.GetValue(objectComponent,null))[x]);
 				
-			} else if(propObject.GetValue(objectComponent,null).GetType() == typeof(Vector3))
+			} else if(objectType == typeof(Vector3))
 			{	
 				for(int x=0;x<3;x++)
 					objectValuesToSend.Add(((Vector3)propObject.GetValue(objectComponent,null))[x]);
 				
-			} else if(propObject.GetValue(objectComponent,null).GetType() == typeof(Vector4))
+			} else if(objectType == typeof(Vector4))
 			{
 				for(int x=0;x<4;x++)
 					objectValuesToSend.Add(((Vector4)propObject.GetValue(objectComponent,null))[x]);	
-			} else if(propObject.GetValue(objectComponent,null).GetType() == typeof(Boolean))
+			} else if(objectType == typeof(Boolean))
 			{
 				objectValuesToSend.Add( ((bool)propObject.GetValue(objectComponent,null) == true) ? 1 : 0);//
-			} else if(propObject.GetValue(objectComponent,null).GetType() == typeof(Single))
+			} else if(objectType == typeof(Single))
 			{
 				objectValuesToSend.Add( ((float)propObject.GetValue(objectComponent,null)));
-			} else if(propObject.GetValue(objectComponent,null).GetType() == typeof(Transform))	// send all data from transform
+			} else if(objectType == typeof(Transform))	// send all data from transform
 			{
 				Transform tempTransform;
 				tempTransform = (Transform)propObject.GetValue(objectComponent,null);
@@ -263,7 +301,7 @@ public class RCSender : MonoBehaviour {
 					objectValuesToSend.Add((float)tempTransform.localScale[x]);
 				for(int x=0;x<4;x++)
 					objectValuesToSend.Add((float)tempTransform.rotation[x]);
-			} else if(propObject.GetValue(objectComponent,null).GetType() == typeof(Matrix4x4))
+			} else if(objectType == typeof(Matrix4x4))
 			{
 				for(int y=0;y<3;y++)
 				{
@@ -274,11 +312,11 @@ public class RCSender : MonoBehaviour {
 					}
 				}
 				
-			} else if(propObject.GetValue(objectComponent,null).GetType() == typeof(int))
+			} else if(objectType == typeof(int))
 			{
 				objectValuesToSend.Add((int)propObject.GetValue(objectComponent,null));
 				
-			} else if(propObject.GetValue(objectComponent,null).GetType() == typeof(Quaternion))
+			} else if(objectType == typeof(Quaternion))
 			{
 				for(int x=0;x<4;x++)
 					objectValuesToSend.Add(((Quaternion)propObject.GetValue(objectComponent,null))[x]);
@@ -295,6 +333,105 @@ public class RCSender : MonoBehaviour {
 		return objectValuesToSend;
 	}
 
+		// TODO: fuse this two methods into one
+		/// <summary>
+		/// Convert FieldInfo to an Arraylist
+		/// </summary>
+		/// <param name="propObject">
+		/// A <see cref="PropertyInfo"/>
+		/// </param>
+		/// <returns>
+		/// A <see cref="List<object>"/>
+		/// </returns>
+		/// 
+		/// 
+		ArrayList listConvertedField(FieldInfo propObject)
+		{
+
+				// Add to the list the correct sequence of values
+				// TODO: This should be optimized to convert.changetype
+
+				ArrayList objectValuesToSend = new ArrayList(); 
+				if(propObject.GetValue(objectComponent) != null) 
+				{
+						Type objectType;
+
+						objectType = fieldObject.FieldType;
+
+						if(objectType == typeof(Vector2))
+						{
+								for(int x=0;x<2;x++)
+										objectValuesToSend.Add(((Vector2)propObject.GetValue(objectComponent))[x]);
+								
+		
+						} else if(objectType == typeof(Vector3))
+						{	
+								for(int x=0;x<3;x++)
+										objectValuesToSend.Add(((Vector3)propObject.GetValue(objectComponent))[x]);
+
+						} else if(objectType == typeof(Vector4))
+						{
+								for(int x=0;x<4;x++)
+										objectValuesToSend.Add(((Vector4)propObject.GetValue(objectComponent))[x]);	
+						} else if(objectType == typeof(Boolean))
+						{
+								objectValuesToSend.Add( ((bool)propObject.GetValue(objectComponent) == true) ? 1 : 0);
+						} else if(objectType == typeof(Single))
+						{
+								objectValuesToSend.Add( ((float)propObject.GetValue(objectComponent)));
+						} else if(objectType == typeof(Transform))	// send all data from transform
+						{
+								Transform tempTransform;
+								tempTransform = (Transform)propObject.GetValue(objectComponent);
+
+								for(int x=0;x<3;x++)
+										objectValuesToSend.Add((float)tempTransform.position[x]);
+								for(int x=0;x<3;x++)
+										objectValuesToSend.Add((float)tempTransform.localScale[x]);
+								for(int x=0;x<4;x++)
+										objectValuesToSend.Add((float)tempTransform.rotation[x]);
+						} else if(objectType == typeof(Matrix4x4))
+						{
+								for(int y=0;y<3;y++)
+								{
+										for(int x=0;x<3;x++)
+										{
+												float tempFloat = ((Matrix4x4)propObject.GetValue(objectComponent))[x,y];
+												objectValuesToSend.Add(tempFloat);
+										}
+								}
+
+						} else if(objectType == typeof(int))
+						{
+								objectValuesToSend.Add((int)propObject.GetValue(objectComponent));
+
+						} else if(objectType == typeof(Collision))
+						{
+								Collision testCollision;
+								testCollision = (Collision)propObject.GetValue (objectComponent);
+
+
+								objectValuesToSend.Add((int)testCollision.contacts.Length);
+
+
+
+						} else if(objectType == typeof(Quaternion))
+						{
+								for(int x=0;x<4;x++)
+										objectValuesToSend.Add(((Quaternion)propObject.GetValue(objectComponent))[x]);
+
+						} else
+						{
+
+								objectValuesToSend.Add((string)propObject.GetValue(objectComponent));
+
+						}
+
+
+
+				} 
+				return objectValuesToSend;
+		}
 
 
 

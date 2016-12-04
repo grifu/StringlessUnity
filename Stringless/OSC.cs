@@ -15,6 +15,7 @@
 using System;
 using System.IO;
 using System.Collections;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -352,18 +353,14 @@ public class UDPPacketIO
 	public int listenPort  = 8000;
 	public string broadcastHost = "127.0.0.1";
 	public int broadcastPort  = 9000;
-
 	private OscMessage oscMessageExpose;
-
-	  //private Dictionary<string, UDPPacketIO> _clients = new Dictionary<string, UDPPacketIO>();
-	  //private UDPPacketIO[] OscPacketIOList;
+	//public List<string> lastAddress = new List<string>();
 
       private UDPPacketIO OscPacketIO;
       Thread ReadThread;
 	  private bool ReaderRunning;
       private OscMessageHandler AllMessageHandler;
 		private OscMessageHandler AllMessageSendingHandler;
-
       Hashtable AddressTable;
 
 	ArrayList messagesReceived;
@@ -446,7 +443,6 @@ public class UDPPacketIO
 
 		buffer = new byte[1000];
 
-
 		ReadThread = new Thread(Read);
 		ReaderRunning = true;
 		ReadThread.IsBackground = true;      
@@ -509,13 +505,15 @@ public class UDPPacketIO
 
 
 		if ( messagesReceived.Count > 0 ) {
-			//Debug.Log("received " + messagesReceived.Count + " messages");
+		
 			lock(ReadThreadLock) {
 				foreach (OscMessage om in messagesReceived)
 				{
 
 					if (AllMessageHandler != null)
 						AllMessageHandler(om);
+
+//					if (!lastAddress.Contains (om.address))	lastAddress.Add (om.address);	// GRIFU
 
 					ArrayList al = (ArrayList)Hashtable.Synchronized(AddressTable)[om.address];
 					if ( al != null) {
@@ -525,6 +523,8 @@ public class UDPPacketIO
 					}
 
 				}
+	
+
 				messagesReceived.Clear();
 			}
 		}
@@ -568,6 +568,14 @@ public class UDPPacketIO
     }
 
 
+	public void remoteRequest()
+	{
+
+//		ReaderRunning = true;
+//		Read ();
+
+	}
+
 	/// <summary>
 	/// Read Thread.  Loops waiting for packets.  When a packet is received, it is 
 	/// dispatched to any waiting All Message Handler.  Also, the address is looked up and
@@ -575,11 +583,11 @@ public class UDPPacketIO
 	/// </summary>
 	private void Read()
 	{
+
 		try
 		{
 			while (ReaderRunning)
 			{
-
 
 				int length = OscPacketIO.ReceivePacket(buffer);
 
@@ -910,6 +918,22 @@ public class UDPPacketIO
       return index;
     }
 
+
+	// delete please
+	/// <summary>
+	/// Get the last address
+	/// </summary>
+	/// <returns>A string with the last Address or an empty string.</returns>
+	/*
+	public List<string> getLastAddress()
+	{
+		Debug.Log (" cont = " + lastAddress.Count);
+		return lastAddress;
+	}
+*/
+
+
+
     /// <summary>
     /// Extracts a messages from a packet.
     /// </summary>
@@ -922,6 +946,9 @@ public class UDPPacketIO
     {
       OscMessage oscM = new OscMessage();
       oscM.address = ExtractString(packet, start, length);
+//		Debug.Log ("address1 = " + oscM.address);
+
+
       int index = start + PadSize(oscM.address.Length+1);
       string typeTag = ExtractString(packet, index, length);
       index += PadSize(typeTag.Length + 1);

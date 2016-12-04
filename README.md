@@ -3,8 +3,9 @@ Stringless - Remote Control for Unity 3D
 * authors: Grifu (Luis Leite)
 * forum: http://www.grifu.com/vmforum/
 * source code:
-* date: 23.04.2016
-* version: 2.0 Beta
+* first release: 23.04.2016
+* this version: 04.12.2016
+* version: 2.1 Beta
 
 
 Stringless vs Remote Control
@@ -36,7 +37,8 @@ There are just 4 behaviors
 
 INSTALLATION
 ------------
-Copy the Stringless to your Assets Folder (The folder Editor should be inside Assets)
+Copy the Stringless to your Assets Folder (The folder Editor should be inside Assets),
+or import stringless packadge into your Unity project
 
 
 HOW TO USE
@@ -68,6 +70,9 @@ WHATS NEW
 - Ported to the Thomas Fredericks UnityOSC
 - Solved the performance issues
 - Included a mapping feature (just for the output values from RCreceiver)
+- Identify incoming OSC messages (a learn button to capture the OSC address)
+- Added field support (now you can expose your own variable trhough OSC)
+- Solved the offset problem
 
 ISSUES
 ------
@@ -75,13 +80,10 @@ This is still a beta version with many issues
 - Include the mapping scheme for RCsender and input values of RCreceiver
 - only the animated parameters are sent
 - methods are limited to blend shapes
-- fields are not implemented yet!
 - some issues within the inspector of the RCCReceiver and RCCSender
 
 TODO
 ----
 - Scale the input mapping (include fields to scale values)
-- Identify incoming OSC messages (a learn button to capture the OSC address)
-- RCReceiver solve the offset problem
 - Optimize performance
-- Complete methods and fields
+- Handle methods in a generilized way

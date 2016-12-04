@@ -2,7 +2,7 @@
 //  ------------------------------------
 //
 // 	Allows the user to map the receving OSC message to any component
-//  Version 2.0 Beta
+//  Version 2.1 Beta
 //
 //  Remote Control for Unity - part of Digital Puppet Tools, A digital ecosystem for Virtual Marionette Project
 //
@@ -134,15 +134,22 @@ public class LevelScriptEditor : Editor
 			// Check for variables only if there are no main properties
 			FieldInfo[] fields = typeComponent.GetFields(flags);
 
-			_propertyChoice = new string[fields.Length];
+			int sizeField = fields.Length;
+
+			_propertyChoice = new string[sizeField];
 			i=0;
 			foreach (FieldInfo fieldInfo in fields)
 			{
 				_propertyChoice[i] = (string)fieldInfo.Name;
 				i++;
-
 			}
+
 			myTarget._generalIndex = EditorGUILayout.Popup("Variable to control", myTarget._generalIndex, _propertyChoice);
+
+			if (fields.Length > myTarget._generalIndex) {
+				myTarget.fieldObject = fields[myTarget._generalIndex];
+			}
+
 			addressName = "/"+myTarget.transform.name;
 		}
 
@@ -158,8 +165,35 @@ public class LevelScriptEditor : Editor
 			
 		}
 
+		// TODO: Please optimize this
+		// create a dialog for a list of known addresses
+		int addresses = EditorPrefs.GetInt("Addresses");
 
-		
+		if(addresses > 0)
+		{
+			string[] addrOSC = new string[addresses+1];
+			addrOSC[0] = myTarget.address.Replace("/","\\");	
+			for(int a=0;a<addresses; a++)
+			{
+								/* Future implementation of TUIO
+								string tempAddress = EditorPrefs.GetString ("address" + a.ToString ());
+								if (tempAddress == "/tuio/2Dcur")
+								*/
+										
+				addrOSC[a+1] = (EditorPrefs.GetString("address"+a.ToString()));
+
+
+
+			}
+			int indexAddress = myTarget._addressIndex;
+			myTarget._addressIndex = EditorGUILayout.Popup("Last addresses",myTarget._addressIndex, addrOSC);
+			if(indexAddress != myTarget._addressIndex)	// change the address
+			{
+				myTarget.address = addrOSC[myTarget._addressIndex].Replace("\\","/");
+				myTarget._addressIndex = 0;
+			}
+		}
+
 
 		// Check for avaiable ports
 
@@ -189,6 +223,7 @@ public class LevelScriptEditor : Editor
 		// TODO: this procedure should be optimized in the future
 		
 		if (myTarget._controlIndex == 0) {
+
 			#if UNITY_EDITOR
 			myTarget.enableMapping = EditorGUILayout.Toggle ("Enable Mapping", myTarget.enableMapping);
 			if (myTarget.enableMapping) 
@@ -547,7 +582,10 @@ public class LevelScriptEditor : Editor
 		
 		return values;
 	}
-
+	void onReceiveMessages(OscMessage packet) {
+		Debug.Log("message = "+packet.address);
+		}
 
 }
 #endif
+

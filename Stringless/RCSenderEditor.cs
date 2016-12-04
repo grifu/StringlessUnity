@@ -2,7 +2,7 @@
 //  ------------------------------------
 //
 // 	Allows the user to map the receving OSC message to any component
-//  Version 2.0 Beta
+//  Version 2.1 Beta
 //
 //  Remote Control for Unity - part of Digital Puppet Tools, A digital ecosystem for Virtual Marionette Project
 //
@@ -152,6 +152,9 @@ public class RCSenderEditor : Editor
 				
 			}
 			myTarget._generalIndex = EditorGUILayout.Popup("Variable to control", myTarget._generalIndex, _propertyChoice);
+			if(fields.Length > myTarget._generalIndex) myTarget.fieldObject = fields[myTarget._generalIndex];
+
+			myTarget.sendEveryFrame = EditorGUILayout.Toggle ("Send every frame", myTarget.sendEveryFrame);
 			addressName = "/"+myTarget.transform.name;
 			
 			

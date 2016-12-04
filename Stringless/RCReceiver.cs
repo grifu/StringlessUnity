@@ -2,7 +2,7 @@
 //  ------------------------------------
 //
 // 	Allows the user to map the receving OSC message to any component
-//  Version 2.0 Beta
+//  Version 2.1 Beta
 //
 //  Remote Control for Unity - part of Digital Puppet Tools, A digital ecosystem for Virtual Marionette Project
 //
@@ -304,64 +304,71 @@ public class RCReceiver : MonoBehaviour {
 	void OnReceive(OscMessage packet) {
 
 
+
 	if(this.enabled)
 		{
+
+
 		if(_controlIndex == 0)
 		{
-			// fill arguments from object -- requirments.requiredArguments can be local variable!!!
-			if(requirements.requiredArgumentsAmount == 0) requirements.requiredArgumentstype = CheckArgumentType(propertyObject); // TODO: can be optimized
-			
-			
-			// Create a new vector for receving the packets
-			int numberArguments = packet.values.Count;	// how many arguments are we receiving
-			object[] typeObject = new object[requirements.requiredArgumentsAmount]; // the size of the required arguments
+			object[] typeObject;
+
+			// TODO: future implementation of TUIO
+			// TUIO specification 1.1 
+
+								/*
+								if (packet.address == "/tuio/2Dcur") {
+								// if (valor == "set")
+								*/
+
+				// fill arguments from object -- requirments.requiredArguments can be local variable!!!
+				if (requirements.requiredArgumentsAmount == 0)
+						requirements.requiredArgumentstype = CheckArgumentType (propertyObject); // TODO: can be optimized
 
 
-			// NUMBER OF ARGUMENTS IS LESS THEN REQUIRED
-			// If there are no sufficient arguments as required lets fill the vector with 0's
+				// Create a new vector for receving the packets
+				int numberArguments = packet.values.Count;	// how many arguments are we receiving
+				typeObject = new object[requirements.requiredArgumentsAmount]; // the size of the required arguments
+
+
+				// NUMBER OF ARGUMENTS IS LESS THEN REQUIRED
+				// If there are no sufficient arguments as required lets fill the vector with 0's
 				// TODO change 0's to the current value
-			if(numberArguments < requirements.requiredArgumentsAmount)
-			{
+				if (numberArguments < requirements.requiredArgumentsAmount) {
 
-				for (int x = 0; x< (requirements.requiredArgumentsAmount); x++) 
-				{
-					
-					if (packet.values[0].GetType() == typeof(Single))
-						typeObject[x] = 0F; // Put 0's if the value is a float
-					else 
-						typeObject[x] = packet.GetInt(0); // if we do not know the type, lets assign the first value to it (TODO: solve it)
+						for (int x = 0; x < (requirements.requiredArgumentsAmount); x++) {
+
+								if (packet.values [0].GetType () == typeof(Single))
+										typeObject [x] = 0F; // Put 0's if the value is a float
+else
+										typeObject [x] = packet.GetInt (0); // if we do not know the type, lets assign the first value to it (TODO: solve it)
+						}
+				} 
+
+
+				// Only if we have more then one message and if the required messages are more then 1
+				if (requirements.requiredArgumentsAmount > 1 && packet.values.Count > 1) {
+						for (int i = 0; i < packet.values.Count; i++) {
+								typeObject [i] = packet.GetFloat (i);
+						}
+
+				} else {
+						// only one parameter arriving, lets chooose from the mapping
+
+						if (enableMapping) {
+								int valueAssign = 0;
+								for (int i = 0; i < requirements.requiredArgumentsAmount; i++) {
+										if (maxRange [i] != 0 || minRange [i] != 0)
+												valueAssign = i;
+								}
+								typeObject [valueAssign] = packet.GetFloat (0);
+						} else {
+								typeObject [0] = packet.GetFloat (0);
+						}
 				}
-			} 
+
 
 		
-			// Only if we have more then one message and if the required messages are more then 1
-			if(requirements.requiredArgumentsAmount > 1 && packet.values.Count > 1)
-			{
-				for ( int i = 0 ; i < packet.values.Count ; i++) 
-					{
-						typeObject[i] = packet.GetFloat(i);
-					}
-
-			} else
-			{
-					// only one parameter arriving, lets chooose from the mapping
-
-					if(enableMapping)
-					{
-						int valueAssign = 0;
-						for(int i=0; i < requirements.requiredArgumentsAmount; i++)
-						{
-							if(maxRange[i] != 0 || minRange[i] != 0) valueAssign = i;
-						}
-						typeObject[valueAssign] = packet.GetFloat(0);
-					} else
-					{
-						typeObject[0] = packet.GetFloat(0);
-					}
-			}
-
-
-
 		object tempVar;
 		tempVar = null;
 		
