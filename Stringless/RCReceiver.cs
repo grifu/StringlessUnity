@@ -77,6 +77,7 @@ public class RCReceiver : MonoBehaviour {
 	private ObjectRequirements requirements;	// requirments arguments (number and type)
 	private object relativeValue;				// keep the original value for relative option
 	private SkinnedMeshRenderer meshTemp;		// mesh for blendshapes
+	private object[] oldValue;
 	//private bool oscEnable = true;
 
 
@@ -379,7 +380,10 @@ else
 			relativeValue = propertyObject.GetValue(objectComponent,null);
 			relativeAt = false; // to run just once
 		}
+
+		if(oldValue == null) oldValue = typeObject;			// save position for later comparison with the relative
 		
+
 		// Assign the correct type to the value
 		if(requirements.requiredArgumentsAmount == 1)
 		{
@@ -389,10 +393,21 @@ else
 			if(relativeValue != null)
 			{
 				if(requirements.requiredArgumentstype == typeof(int)){
+
+							/*TODO:  CHECK this out
+							int tempDif = 0;
+							if (oldValue != typeObject) tempDif = (int)oldValue[0]-(int)typeObject [0];
+							tempVar = (object)((int)relativeValue - tempDif);
+*/
 					tempVar = (object)((int)relativeValue + packet.GetInt(0));
 					if(enableMapping) tempVar =(object)((int)relativeValue +(int)Mathf.Lerp(minRange[0],maxRange[0],packet.GetInt(0)));
 						}
 				else if(requirements.requiredArgumentstype == typeof(float)){
+							/* TODO:  CHECK this out
+							float tempDif = 0;
+							if (oldValue != typeObject) tempDif = (float)oldValue[0]-(float)typeObject [0];
+							tempVar = (object)((float)relativeValue - tempDif);
+*/
 					tempVar = (object)((float)relativeValue + packet.GetFloat(0));
 					if(enableMapping) tempVar =(object)((int)relativeValue +Mathf.Lerp(minRange[0],maxRange[0],packet.GetFloat(0)));
 						}
@@ -408,20 +423,29 @@ else
 			
 		} else if(requirements.requiredArgumentsAmount == 2) //	Assuming vector 2 as floats
 			{
-				if(relativeValue != null)
-					tempVar = (object)((Vector2)relativeValue + new Vector2((float)typeObject[0],(float)typeObject[1]));
-					if(enableMapping) tempVar =(object)((Vector2)relativeValue +new Vector2(Mathf.Lerp(minRange[0],maxRange[0],(float)typeObject[0]), Mathf.Lerp(minRange[1],maxRange[1],(float)typeObject[1])));
-				else		
-					tempVar = new Vector2((float)typeObject[0],(float)typeObject[1]);
-					if(enableMapping) tempVar =new Vector2(Mathf.Lerp(minRange[0],maxRange[0],(float)typeObject[0]), Mathf.Lerp(minRange[1],maxRange[1],(float)typeObject[1]));
-				
+					if (relativeValue != null) {
+						Vector2 tempDif = new Vector2 (0,0);
+						if (oldValue != typeObject) tempDif = new Vector2((float)oldValue[0]-(float)typeObject [0],(float)oldValue[1]-(float)typeObject [1]);
+						tempVar = (object)((Vector2)relativeValue - tempDif);
+
+						if (enableMapping)
+							tempVar = (object)((Vector2)relativeValue + new Vector2 (Mathf.Lerp (minRange [0], maxRange [0], (float)typeObject [0]), Mathf.Lerp (minRange [1], maxRange [1], (float)typeObject [1])));
+					} else {
+						tempVar = new Vector2 ((float)typeObject [0], (float)typeObject [1]);
+						if (enableMapping)
+							tempVar = new Vector2 (Mathf.Lerp (minRange [0], maxRange [0], (float)typeObject [0]), Mathf.Lerp (minRange [1], maxRange [1], (float)typeObject [1]));
+					}
 		} else if(requirements.requiredArgumentsAmount == 3) //	Assuming vector 3 as floats
 			{
 				if(relativeValue != null) 	// for relative values 
 				{
-					// TODO: R2 - Solve the offset problem
-					tempVar = (object)((Vector3)relativeValue + new Vector3((float)typeObject[0],(float)typeObject[1],(float)typeObject[2]));
-					if(enableMapping) tempVar = (object)((Vector3)relativeValue +new Vector3(Mathf.Lerp(minRange[0],maxRange[0],(float)typeObject[0]), Mathf.Lerp(minRange[1],maxRange[1],(float)typeObject[1]), Mathf.Lerp(minRange[2],maxRange[2],(float)typeObject[2])));
+						// save and compare the difference between the old and the new position 
+						Vector3 tempDif = Vector3.zero;						
+						if (oldValue != typeObject) tempDif = new Vector3((float)oldValue[0]-(float)typeObject [0],(float)oldValue[1]-(float)typeObject [1],(float)oldValue[2]-(float)typeObject [2]);
+						tempVar = (object)((Vector3)relativeValue - tempDif);
+
+						if(enableMapping) tempVar = (object)((Vector3)relativeValue +new Vector3(Mathf.Lerp(minRange[0],maxRange[0],(float)tempDif.x), Mathf.Lerp(minRange[1],maxRange[1],(float)tempDif.y), Mathf.Lerp(minRange[2],maxRange[2],(float)tempDif.z)));
+//					if(enableMapping) tempVar = (object)((Vector3)relativeValue +new Vector3(Mathf.Lerp(minRange[0],maxRange[0],(float)typeObject[0]), Mathf.Lerp(minRange[1],maxRange[1],(float)typeObject[1]), Mathf.Lerp(minRange[2],maxRange[2],(float)typeObject[2])));
 				}
 				else
 				{
@@ -431,12 +455,20 @@ else
 				}
 		} else if(requirements.requiredArgumentsAmount == 4)//	Assuming vector 4 as floats
 			{
-				if(relativeValue != null)
-					tempVar = (object)((Vector4)relativeValue + new Vector4((float)typeObject[0],(float)typeObject[1],(float)typeObject[2],(float)typeObject[3]));
-					if(enableMapping) tempVar =(object)((Vector4)relativeValue +new Vector4(Mathf.Lerp(minRange[0],maxRange[0],(float)typeObject[0]), Mathf.Lerp(minRange[1],maxRange[1],(float)typeObject[1]), Mathf.Lerp(minRange[2],maxRange[2],(float)typeObject[2]), Mathf.Lerp(minRange[3],maxRange[3],(float)typeObject[3])));
-				else
-					tempVar = new Vector4((float)typeObject[0],(float)typeObject[1],(float)typeObject[2],(float)typeObject[3]);
-					if(enableMapping) tempVar =new Vector4(Mathf.Lerp(minRange[0],maxRange[0],(float)typeObject[0]), Mathf.Lerp(minRange[1],maxRange[1],(float)typeObject[1]), Mathf.Lerp(minRange[2],maxRange[2],(float)typeObject[2]), Mathf.Lerp(minRange[3],maxRange[3],(float)typeObject[3]));
+					if (relativeValue != null) {
+						// save and compare the difference between the old and the new position 
+						Vector4 tempDif = Vector4.zero;						
+						if (oldValue != typeObject)
+							tempDif = new Vector4 ((float)oldValue [0] - (float)typeObject [0], (float)oldValue [1] - (float)typeObject [1], (float)oldValue [2] - (float)typeObject [2], (float)oldValue [3] - (float)typeObject [3]);
+						tempVar = (object)((Vector4)relativeValue - tempDif);
+		
+						if (enableMapping)
+							tempVar = (object)((Vector4)relativeValue + new Vector4 (Mathf.Lerp (minRange [0], maxRange [0], (float)typeObject [0]), Mathf.Lerp (minRange [1], maxRange [1], (float)typeObject [1]), Mathf.Lerp (minRange [2], maxRange [2], (float)typeObject [2]), Mathf.Lerp (minRange [3], maxRange [3], (float)typeObject [3])));
+					} else {
+						tempVar = new Vector4 ((float)typeObject [0], (float)typeObject [1], (float)typeObject [2], (float)typeObject [3]);
+						if (enableMapping)
+							tempVar = new Vector4 (Mathf.Lerp (minRange [0], maxRange [0], (float)typeObject [0]), Mathf.Lerp (minRange [1], maxRange [1], (float)typeObject [1]), Mathf.Lerp (minRange [2], maxRange [2], (float)typeObject [2]), Mathf.Lerp (minRange [3], maxRange [3], (float)typeObject [3]));
+					}
 				}
 
 		

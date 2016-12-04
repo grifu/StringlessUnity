@@ -115,6 +115,15 @@ public class RCSender : MonoBehaviour {
 			if(methods.Length > _generalIndex) methodObject = methods[_generalIndex];
 		}
 
+		if (fieldObject == null)
+		{
+			Type typeComponent = objectComponent.GetType();
+			const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.DeclaredOnly  | BindingFlags.Public | 
+				BindingFlags.Instance | BindingFlags.Static;
+			FieldInfo[] fields = typeComponent.GetFields (flags);	
+			if(fields.Length > _generalIndex) fieldObject = fields[_generalIndex];
+		}
+
 		OSC[] instancesOSC;
 		instancesOSC = FindObjectsOfType (typeof(OSC)) as OSC[];
 		GameObject oscGameobject;
@@ -206,7 +215,7 @@ public class RCSender : MonoBehaviour {
 						}
 			}else if(_controlIndex == 2)	// fields sending not include yet
 				{
-					//	if (oldFieldObject != null) print ("valor = "+ oldFieldObject.GetValue(objectComponent));
+			
 					if (fieldObject != null) 
 					{
 								

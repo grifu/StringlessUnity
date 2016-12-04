@@ -69,7 +69,7 @@ public class RCSenderEditor : Editor
 		myTarget.objectComponent = myTarget.GetComponent(allComponents[myTarget._componentIndex].GetType());
 		Type typeComponent = myTarget.objectComponent.GetType();
 		
-		const BindingFlags flags = /*BindingFlags.NonPublic | */ BindingFlags.DeclaredOnly  | BindingFlags.Public | 
+		const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.DeclaredOnly  | BindingFlags.Public | 
 			BindingFlags.Instance | BindingFlags.Static;
 		
 		
@@ -156,8 +156,7 @@ public class RCSenderEditor : Editor
 
 			myTarget.sendEveryFrame = EditorGUILayout.Toggle ("Send every frame", myTarget.sendEveryFrame);
 			addressName = "/"+myTarget.transform.name;
-			
-			
+
 			
 		}
 
