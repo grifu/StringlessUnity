@@ -12,6 +12,7 @@
 //
 
 
+
 using System;
 using System.IO;
 using System.Collections;
@@ -21,7 +22,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Text;
 using UnityEngine;
-
+using System.Runtime.InteropServices;
 
 /// \mainpage
 /// \section Overview
@@ -93,12 +94,25 @@ using UnityEngine;
 /// <summary>
 /// UdpPacket provides packetIO over UDP
 /// </summary>
+/// 
+
+
 public class UDPPacketIO 
 {
+	#if UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
+	[DllImport ("BonjourPlugin")]
+	private static extern void startService(int port);	
+
+	[DllImport ("BonjourPlugin")]
+	private static extern void stopService();	
+
+	#endif
+
 	private UdpClient Sender;
 	private UdpClient Receiver;
 	private bool socketsOpen;
 	private string remoteHostName;
+	private string remoteHostIP;
 	private int remotePort;
 	private int localPort;
 
@@ -117,6 +131,9 @@ public class UDPPacketIO
 		if (IsOpen()) {
 			Debug.Log("closing udpclient listener on port " + localPort);
 			Close();
+			#if UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
+			stopService();
+			#endif
 		}
 		
 	}
@@ -135,8 +152,12 @@ public class UDPPacketIO
 			
 			IPEndPoint listenerIp = new IPEndPoint(IPAddress.Any, localPort);
 			Receiver = new UdpClient(listenerIp);
-			
-			
+
+			#if UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
+
+//			startService("_osc.udp","osc",localPort, "local");
+			startService( localPort );
+			#endif
 			socketsOpen = true;
 			
 			return true;
@@ -154,7 +175,10 @@ public class UDPPacketIO
 	/// Close the socket currently listening, and destroy the UDP sender device.
 	/// </summary>
 	public void Close()
-	{    
+	{
+		#if UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
+		stopService();
+		#endif
 		if(Sender != null)
 			Sender.Close();
 		
@@ -171,6 +195,9 @@ public class UDPPacketIO
 	public void OnDisable()
 	{
 		Close();
+		#if UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
+		 stopService();
+		#endif
 	}
 	
 	/// <summary>
@@ -204,6 +231,7 @@ public class UDPPacketIO
 	/// <returns>The number of bytes read, or 0 on failure.</returns>
 	public int ReceivePacket(byte[] buffer)
 	{
+		
 		if (!IsOpen())
 			Open();
 		if (!IsOpen())
@@ -214,13 +242,25 @@ public class UDPPacketIO
 		byte[] incoming = Receiver.Receive( ref iep );
 		int count = Math.Min(buffer.Length, incoming.Length);
 		System.Array.Copy(incoming, buffer, count);
+		RemoteHostIP = iep.Address.ToString ();
 		return count;
 		
 		
 	}
 	
-	
-	
+	public string RemoteHostIP
+	{
+		get
+		{ 
+			return remoteHostIP; 
+		}
+		set
+		{ 
+			remoteHostIP = value; 
+		}
+	}
+		
+
 	/// <summary>
 	/// The address of the board that you're sending to.
 	/// </summary>
@@ -235,6 +275,8 @@ public class UDPPacketIO
 			remoteHostName = value; 
 		}
 	}
+
+
 	
 	/// <summary>
 	/// The remote port that you're sending to.
@@ -353,24 +395,20 @@ public class UDPPacketIO
 	public int listenPort  = 8000;
 	public string broadcastHost = "127.0.0.1";
 	public int broadcastPort  = 9000;
-	private OscMessage oscMessageExpose;
+
 	//public List<string> lastAddress = new List<string>();
 
-      private UDPPacketIO OscPacketIO;
-      Thread ReadThread;
-	  private bool ReaderRunning;
-      private OscMessageHandler AllMessageHandler;
-		private OscMessageHandler AllMessageSendingHandler;
-      Hashtable AddressTable;
-
+	private OscMessage oscMessageExpose;
+    private UDPPacketIO OscPacketIO;
+    Thread ReadThread;
+	private bool ReaderRunning;
+    private OscMessageHandler AllMessageHandler;
+	private OscMessageHandler AllMessageSendingHandler;
+    Hashtable AddressTable;
 	ArrayList messagesReceived;
-
 	private object ReadThreadLock = new object();
-
 	byte[] buffer;
-
 	bool paused = false;
-
 
 	public int getPortIN()
 	{
@@ -386,6 +424,12 @@ public class UDPPacketIO
 	{
 		return broadcastHost;
 	}
+
+	public string RemoteHost()
+	{
+		return OscPacketIO.RemoteHostIP;
+		}
+	
 
 	void HandleOnPlayModeChanged()
 	{
@@ -433,8 +477,9 @@ public class UDPPacketIO
 
 
 	void Awake() {
-		//print("Opening OSC listener on port " + listenPort);
 
+
+		//print("Opening OSC listener on port " + listenPort);
 
 		OscPacketIO = new UDPPacketIO(broadcastHost, broadcastPort, listenPort);
 		AddressTable = new Hashtable();
@@ -463,6 +508,20 @@ public class UDPPacketIO
 		
 	{
 		OscPacketIO = new UDPPacketIO(broadcastHost, broadcastPort, inPort);
+	}
+		
+
+	public void setup(int inPort, int outPort)
+
+	{
+		OscPacketIO = new UDPPacketIO(broadcastHost, outPort, inPort);
+	}
+		
+
+	public void setup(int inPort, string localIP, int outPort)
+
+	{
+		OscPacketIO = new UDPPacketIO(localIP, outPort, inPort);
 	}
 
 
@@ -505,7 +564,6 @@ public class UDPPacketIO
 
 
 		if ( messagesReceived.Count > 0 ) {
-		
 			lock(ReadThreadLock) {
 				foreach (OscMessage om in messagesReceived)
 				{
@@ -583,14 +641,11 @@ public class UDPPacketIO
 	/// </summary>
 	private void Read()
 	{
-
 		try
 		{
 			while (ReaderRunning)
 			{
-
 				int length = OscPacketIO.ReceivePacket(buffer);
-
 				if (length > 0)
 				{
 					lock(ReadThreadLock) {
@@ -899,6 +954,7 @@ public class UDPPacketIO
       {
         case '/':
           index = ExtractMessage( messages, packet, index, length );
+
           break;
         case '#':
           string bundleString = ExtractString(packet, start, length);
@@ -906,12 +962,17 @@ public class UDPPacketIO
           {
             // skip the "bundle" and the timestamp
             index+=16;
+
             while ( index < length )
             {
-              int messageSize = ( packet[index++] << 24 ) + ( packet[index++] << 16 ) + ( packet[index++] << 8 ) + packet[index++];
-              /*int newIndex = */ExtractMessages( messages, packet, index, length ); 
-              index += messageSize;
-            }            
+					
+					int messageSize = ( packet[index++] << 24 ) + ( packet[index++] << 16 ) + ( packet[index++] << 8 ) + packet[index++];
+					int newIndex = ExtractMessage( messages, packet, index, length ); 
+					index += messageSize;
+						
+
+            }   
+
           }
           break;
       }
@@ -945,8 +1006,8 @@ public class UDPPacketIO
     private static int ExtractMessage(ArrayList messages, byte[] packet, int start, int length)
     {
       OscMessage oscM = new OscMessage();
+
       oscM.address = ExtractString(packet, start, length);
-//		Debug.Log ("address1 = " + oscM.address);
 
 
       int index = start + PadSize(oscM.address.Length+1);

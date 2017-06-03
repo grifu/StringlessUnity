@@ -14,6 +14,8 @@ using UnityEngine;
 using System.Collections;
 using System.Reflection;
 using System;
+using UnityEditor.SceneManagement;
+
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -28,6 +30,11 @@ public class RCSenderEditor : Editor
 	
 	public override void OnInspectorGUI()
 	{
+
+
+
+
+
 		RCSender myTarget = (RCSender)target;
 		
 		Component[] allComponents;
@@ -50,10 +57,14 @@ public class RCSenderEditor : Editor
 			_choices[i] = (string)component.GetType().Name;
 			i++;
 		}
-		
+
+		EditorGUI.BeginChangeCheck();
+		serializedObject.Update();
+
 		// Display popup
 		int oldComponentIndex = myTarget._componentIndex;
 		myTarget._componentIndex = EditorGUILayout.Popup("Component to control", myTarget._componentIndex, _choices);
+
 
 		// reset components
 		if (oldComponentIndex != myTarget._componentIndex) 
@@ -200,6 +211,10 @@ public class RCSenderEditor : Editor
 			myTarget._portIndex = 0;
 		}
 
+		if (GUI.changed == true) {
+			EditorSceneManager.MarkAllScenesDirty();
+
+		}
 
 	}
 }

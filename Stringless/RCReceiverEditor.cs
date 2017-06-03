@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.Collections;
 using System.Reflection;
 using System;
+using UnityEditor.SceneManagement;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -36,7 +37,10 @@ public class LevelScriptEditor : Editor
 		string[] _propertyChoice;
 		string[] _serverChoice;
 		string addressName; // OSC Address
+		int test;
 
+
+		myTarget.teste = EditorGUI.IntField (Rect.zero, myTarget.teste);
 
 		addressName = "";
 		// --------------------------------------------------------- [ COMPONENTS ]
@@ -109,6 +113,8 @@ public class LevelScriptEditor : Editor
 
 				// UPDATE the address field
 				 addressName = "/"+myTarget.transform.name+"_"+myTarget.propertyObject.Name; 
+
+
 			}
 		} else if(myTarget._controlIndex == 1) // METHODS
 		{
@@ -117,14 +123,20 @@ public class LevelScriptEditor : Editor
 			MethodInfo[] methods = typeComponent.GetMethods(flags);
 			_propertyChoice = new string[methods.Length];
 			i=0;
+
 			foreach (MethodInfo methodInfo in methods)
 			{
 				_propertyChoice[i] = (string)methodInfo.Name;
 				i++;
+
 			}
+		//	Debug.Log (" index = " + myTarget._generalIndex);
 			myTarget._generalIndex = EditorGUILayout.Popup("Method to control", myTarget._generalIndex, _propertyChoice);
+
+//			Debug.Log (" index = " + myTarget._generalIndex);
 			if (methods.Length > myTarget._generalIndex) {
 				myTarget.methodObject = methods [myTarget._generalIndex];
+				serializedObject.ApplyModifiedProperties ();
 				addressName = "/" + myTarget.transform.name;
 				myTarget._extra = EditorGUILayout.IntField ("Blendshape Index", myTarget._extra);
 			}
@@ -159,9 +171,13 @@ public class LevelScriptEditor : Editor
 			myTarget.address = EditorGUILayout.TextField("OSC Address",addressName);
 		} else
 		{
+			string maddresses = EditorPrefs.GetString("maddress");
+			//Debug.Log ("madrresss = " + maddresses);
 			// get the manually wroten address
 			if(myTarget.address.Length > 0) addressName = myTarget.address ;
 			myTarget.address = EditorGUILayout.TextField("OSC Address",addressName);
+
+			EditorPrefs.SetString ("maddress", myTarget.address);
 			
 		}
 
@@ -194,6 +210,26 @@ public class LevelScriptEditor : Editor
 			}
 		}
 
+
+		// this should be concatenated with the OSC class
+		RemoteStrings[] instanceRemoteStrings;
+		instanceRemoteStrings = FindObjectsOfType (typeof(RemoteStrings)) as RemoteStrings[];
+		//GameObject remoteGameobject = myTarget.gameObject;
+		_serverChoice = new string[instanceRemoteStrings.Length];
+		if (instanceRemoteStrings.Length > 0) {
+			i = 0;
+			foreach(RemoteStrings item in instanceRemoteStrings)
+			{
+				_serverChoice [i] = item.startup_port.ToString();
+				i++;
+//
+//				if(item.startup_port == myTarget.RCPortInPort.listenPort) Debug.Log("jhsdkfh"); // remoteGameobject = item.gameObject;
+			}
+			myTarget._portIndex = EditorGUILayout.Popup("Input Port", myTarget._portIndex, _serverChoice);
+			myTarget.listenPort = instanceRemoteStrings [myTarget._portIndex].startup_port;
+			myTarget._remoteString = true;
+			myTarget.enableMapping = true;
+		}
 
 		// Check for avaiable ports
 
@@ -362,19 +398,25 @@ public class LevelScriptEditor : Editor
 
 								} else
 								{
-									float minValue = myTarget.minRange [myTarget._extra];
+									//float minValue = myTarget.minRange [myTarget._extra];
+								float minValue = myTarget.minRange [0];
 									minValue = EditorGUILayout.FloatField ("min", minValue);
-									myTarget.minRange[myTarget._extra] = minValue;
+									//myTarget.minRange[myTarget._extra] = minValue;
+								myTarget.minRange[0] = minValue;
 
-									float maxValue = myTarget.maxRange [myTarget._extra];
+									//float maxValue = myTarget.maxRange [myTarget._extra];
+								float maxValue = myTarget.maxRange [0];
 									maxValue = EditorGUILayout.FloatField ("max", maxValue);
-									myTarget.maxRange[myTarget._extra] = maxValue;
+									//myTarget.maxRange[myTarget._extra] = maxValue;
+								myTarget.maxRange[0] = maxValue;
 
 									if(myTarget.learnOut)
 									{
 
-										if(meshTemp.GetBlendShapeWeight(myTarget._extra) < myTarget.minRange[myTarget._extra]) myTarget.minRange[myTarget._extra] = meshTemp.GetBlendShapeWeight(myTarget._extra);
-										if(meshTemp.GetBlendShapeWeight(myTarget._extra) > myTarget.maxRange[myTarget._extra]) myTarget.maxRange[myTarget._extra] = meshTemp.GetBlendShapeWeight(myTarget._extra);
+//										if(meshTemp.GetBlendShapeWeight(myTarget._extra) < myTarget.minRange[myTarget._extra]) myTarget.minRange[myTarget._extra] = meshTemp.GetBlendShapeWeight(myTarget._extra);
+//										if(meshTemp.GetBlendShapeWeight(myTarget._extra) > myTarget.maxRange[myTarget._extra]) myTarget.maxRange[myTarget._extra] = meshTemp.GetBlendShapeWeight(myTarget._extra);
+									if(meshTemp.GetBlendShapeWeight(myTarget._extra) < myTarget.minRange[0]) myTarget.minRange[0] = meshTemp.GetBlendShapeWeight(myTarget._extra);
+									if(meshTemp.GetBlendShapeWeight(myTarget._extra) > myTarget.maxRange[0]) myTarget.maxRange[0] = meshTemp.GetBlendShapeWeight(myTarget._extra);
 
 
 									}
@@ -409,6 +451,11 @@ public class LevelScriptEditor : Editor
 			#endif
 		}
 		//**********************************
+		if (GUI.changed == true) {
+			EditorSceneManager.MarkAllScenesDirty();
+		}
+		//**********************************
+
 	}
 	
 

@@ -12,11 +12,12 @@
 //	www.virtualmarionette.grifu.com
 
 using UnityEngine;
-using UnityEditor;
 using System;
 using System.Collections.Generic;
 using System.Collections;
-
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 /// <summary>
 /// Editor window to trace incoming and outgoing OSC messages.
