@@ -4,8 +4,8 @@ Stringless - Remote Control for Unity 3D
 * forum: http://www.grifu.com/vmforum/
 * source code:
 * first release: 23.04.2016
-* this version: 04.12.2016
-* version: 2.1 Beta
+* this version: 30.05.2017
+* version: 2.3 Beta
 
 
 Stringless vs Remote Control
@@ -17,6 +17,8 @@ I had to adapt Fredericks OSC plugin to fit in Stringless.
 
 Compatibility with Unity versions 4 and 5 (Windows / Mac)
 
+Stringless supports ZeroConf networking for auto-discovery through Bonjour (although for now it just works on Macs).
+Version 2.3 makes use of the Remote Control Protocol for auto-discovery and auto-mapping. It supports the RemoteUI which allows to control the Gameobject parameters on a remote application such as OfxRemoteUI developed by Oriol Ferrer. OfxRemoteUI can run's on Windows, Mac, IOS or Android.
 
 ABSTRACT
 --------
