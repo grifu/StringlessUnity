@@ -14,9 +14,9 @@ using System.Collections.Generic;
 using System.Collections;
 using System.Reflection;
 using System;
-using UnityEditor.SceneManagement;
 
 #if UNITY_EDITOR
+using UnityEditor.SceneManagement;
 using UnityEditor;
 #endif
 
